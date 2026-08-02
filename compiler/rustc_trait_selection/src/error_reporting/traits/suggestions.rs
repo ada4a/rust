@@ -714,13 +714,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Suggest dereferencing the argument to a function/method call if possible
 
             // Get the root obligation, since the leaf obligation we have may be unhelpful (#87437)
-            let mut real_trait_pred = trait_pred;
-            while let Some((parent_code, parent_trait_pred)) = code.parent_with_predicate() {
-                code = parent_code;
-                if let Some(parent_trait_pred) = parent_trait_pred {
-                    real_trait_pred = parent_trait_pred;
-                }
-            }
+            let (real_trait_clause, root_code) = code.peel_derives_with_clause();
+            let code = root_code;
 
             // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
             // `ReBound`, and we don't particularly care about the regions.
