@@ -385,7 +385,7 @@ impl<T> Trait<T> for X {
                             .explicit_item_self_bounds(opaque_def_id)
                             .skip_binder()
                             .iter()
-                            .any(|(pred, _span)| match pred.kind().skip_binder() {
+                            .any(|(clause, _span)| match clause.kind().skip_binder() {
                                 ty::ClauseKind::Trait(trait_predicate)
                                     if trait_predicate.polarity == ty::ClausePolarity::Positive =>
                                 {
@@ -518,9 +518,10 @@ impl<T> Trait<T> for X {
                             ty::Alias(..) => values.expected,
                             _ => values.found,
                         };
-                        let preds = tcx.explicit_item_self_bounds(def_id);
-                        for (pred, _span) in preds.skip_binder() {
-                            let ty::ClauseKind::Trait(trait_predicate) = pred.kind().skip_binder()
+                        let clauses = tcx.explicit_item_self_bounds(def_id);
+                        for (clause, _span) in clauses.skip_binder() {
+                            let ty::ClauseKind::Trait(trait_predicate) =
+                                clause.kind().skip_binder()
                             else {
                                 continue;
                             };

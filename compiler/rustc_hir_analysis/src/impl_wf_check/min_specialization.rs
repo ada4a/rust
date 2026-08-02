@@ -409,7 +409,7 @@ fn check_specialization_on<'tcx>(
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     match clause.kind().skip_binder() {
-        // Global predicates are either always true or always false, so we
+        // Global clauses are either always true or always false, so we
         // are fine to specialize on.
         _ if clause.is_global() => Ok(()),
         // We allow specializing on explicitly marked traits with no associated
@@ -453,7 +453,7 @@ fn check_specialization_on<'tcx>(
         }
         _ => Err(tcx
             .dcx()
-            .struct_span_err(span, format!("cannot specialize on predicate `{clause}`"))
+            .struct_span_err(span, format!("cannot specialize on clause `{clause}`"))
             .emit_err()),
     }
 }

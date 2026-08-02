@@ -184,7 +184,7 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
         BuiltinDeriveImplTrait::Default => {
             if matches!(loc.adt, AdtId::EnumId(_)) {
                 // Enums don't have extra bounds.
-                explicit_own_predicates(interner, adt_predicates.own_explicit_predicates())
+                explicit_own_predicates(interner, adt_predicates.own_explicit_clauses())
             } else {
                 simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
             }
@@ -199,7 +199,7 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
                 ));
             };
             let duplicated_bounds =
-                adt_predicates.explicit_predicates().iter_identity().filter_map(|pred| {
+                adt_predicates.explicit_clauses().iter_identity().filter_map(|pred| {
                     let pred = pred.skip_norm_wip();
                     let mentions_pointee =
                         pred.visit_with(&mut MentionsPointee { pointee_param_idx }).is_break();
@@ -220,7 +220,7 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
                 Clauses::new_from_iter(
                     interner,
                     adt_predicates
-                        .explicit_predicates()
+                        .explicit_clauses()
                         .iter_identity()
                         .map(Unnormalized::skip_norm_wip)
                         .chain(duplicated_bounds)
@@ -331,7 +331,7 @@ fn simple_trait_predicates<'db>(
         Clauses::new_from_iter(
             interner,
             adt_predicates
-                .explicit_predicates()
+                .explicit_clauses()
                 .iter_identity()
                 .map(Unnormalized::skip_norm_wip)
                 .chain(extra_predicates)

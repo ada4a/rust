@@ -3544,9 +3544,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let impl_trait_ref = ocx.normalize(&cause, self.param_env, impl_trait_ref);
             ocx.eq(&cause, self.param_env, base_ty, impl_trait_ref.self_ty())?;
 
-            // Register the impl's predicates. One of these predicates
-            // must be unsatisfied, or else we wouldn't have gotten here
-            // in the first place.
+            // Register the impl's clauses. One of these clauses must be
+            // unsatisfied, or else we wouldn't have gotten here in the
+            // first place.
             let unnormalized_clauses =
                 self.tcx.clauses_of(impl_def_id).instantiate(self.tcx, impl_args);
             ocx.register_obligations(traits::predicates_for_generics(

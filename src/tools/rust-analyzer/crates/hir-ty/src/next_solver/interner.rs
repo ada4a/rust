@@ -1365,7 +1365,7 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        predicates_of(self.db, def_id).own_explicit_predicates()
+        predicates_of(self.db, def_id).own_explicit_clauses()
     }
 
     fn explicit_super_predicates_of(

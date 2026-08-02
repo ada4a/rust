@@ -86,7 +86,7 @@ pub struct WithDefinedOpaques<T> {
 
 #[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTrait {
-    pub(crate) predicates: StoredEarlyBinder<StoredClauses>,
+    pub(crate) clauses: StoredEarlyBinder<StoredClauses>,
     pub(crate) assoc_ty_bounds_start: u32,
 }
 
@@ -635,7 +635,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         // place even if we encounter more opaque types while
                         // lowering the bounds
                         let idx = self.impl_trait_mode.opaque_type_data.alloc(ImplTrait {
-                            predicates: StoredEarlyBinder::bind(Clauses::empty().store()),
+                            clauses: StoredEarlyBinder::bind(Clauses::empty().store()),
                             assoc_ty_bounds_start: 0,
                         });
 
@@ -1054,12 +1054,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         rustc_type_ir::ClauseKind::Projection(p) => {
                             projections.push(b.kind().rebind(p));
                         }
-                        rustc_type_ir::ClauseKind::TypeOutlives(outlives_predicate) => {
+                        rustc_type_ir::ClauseKind::TypeOutlives(outlives_clause) => {
                             if region.is_some() {
                                 // FIXME: Report an error.
                                 had_error = true;
                             }
-                            region = Some(outlives_predicate.1);
+                            region = Some(outlives_clause.1);
                         }
                         rustc_type_ir::ClauseKind::RegionOutlives(_)
                         | rustc_type_ir::ClauseKind::ConstArgHasType(_, _)
@@ -1333,7 +1333,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
         self.is_lowering_impl_trait_bounds = prev_is_lowering_impl_trait_bounds;
         ImplTrait {
-            predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
+            clauses: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
             assoc_ty_bounds_start,
         }
     }
@@ -1523,7 +1523,7 @@ impl ImplTraitId {
 
     #[inline]
     pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-        self.data(db).predicates.get().map_bound(|it| it.as_slice())
+        self.data(db).clauses.get().map_bound(|it| it.as_slice())
     }
 
     #[inline]
@@ -1532,7 +1532,7 @@ impl ImplTraitId {
         db: &'db dyn HirDatabase,
     ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
         let data = self.data(db);
-        data.predicates.get().map_bound(|it| &it.as_slice()[..data.assoc_ty_bounds_start as usize])
+        data.clauses.get().map_bound(|it| &it.as_slice()[..data.assoc_ty_bounds_start as usize])
     }
 }
 
@@ -2338,21 +2338,21 @@ pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
-pub struct GenericPredicates {
+pub struct GenericClauses {
     // The order is the following:
     //
-    // 1. If `has_trait_implied_predicate == true`, the implicit trait predicate.
+    // 1. If `has_trait_implied_clause == true`, the implicit trait clause.
     // 2. The bounds of the associated types of the parents, coming from `Trait<Assoc: Trait>`.
     //    Note: associated type bounds from `Self::Assoc: Trait` on traits *won't* be included
     //    here, they are in 3.
-    // 3. The explicit, self-only predicates for the parent.
-    // 4. The explicit, self-only trait predicate for the child,
+    // 3. The explicit, self-only clauses for the parent.
+    // 4. The explicit, self-only trait clause for the child,
     // 5. The bounds of the associated types of the child.
-    predicates: StoredEarlyBinder<StoredClauses>,
+    clauses: StoredEarlyBinder<StoredClauses>,
     // Keep this ordered according to the above.
-    has_trait_implied_predicate: bool,
-    parent_explicit_self_predicates_start: u32,
-    own_predicates_start: u32,
+    has_trait_implied_clause: bool,
+    parent_explicit_self_clauses_start: u32,
+    own_clauses_start: u32,
     own_assoc_ty_bounds_start: u32,
 }
 
@@ -2375,10 +2375,10 @@ fn generic_predicates_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
-) -> TyLoweringResult<'db, GenericPredicates> {
-    TyLoweringResult::empty(GenericPredicates::from_explicit_own_predicates(
-        StoredEarlyBinder::bind(Clauses::empty().store()),
-    ))
+) -> TyLoweringResult<'db, GenericClauses> {
+    TyLoweringResult::empty(GenericClauses::from_explicit_own_clauses(StoredEarlyBinder::bind(
+        Clauses::empty().store(),
+    )))
 }
 
 impl GenericPredicates {
@@ -2426,7 +2426,7 @@ impl GenericPredicates {
         db: &'db dyn HirDatabase,
         def: GenericDefId,
     ) -> EarlyBinder<'db, impl Iterator<Item = Clause<'db>>> {
-        Self::query(db, def).own_explicit_predicates()
+        Self::query(db, def).own_explicit_clauses()
     }
 
     #[inline]
@@ -2434,7 +2434,7 @@ impl GenericPredicates {
         db: &'db dyn HirDatabase,
         def: GenericDefId,
     ) -> EarlyBinder<'db, impl Iterator<Item = Clause<'db>>> {
-        Self::query(db, def).explicit_predicates()
+        Self::query(db, def).explicit_clauses()
     }
 
     #[inline]
@@ -2443,16 +2443,16 @@ impl GenericPredicates {
     }
 
     #[inline]
-    pub fn own_explicit_predicates(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
-        self.predicates
+    pub fn own_explicit_clauses(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
+        self.clauses
             .get()
             .map_bound(|it| it.as_slice()[self.own_predicates_start as usize..].iter().copied())
     }
 
     #[inline]
-    pub fn explicit_predicates(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
-        self.predicates.get().map_bound(|it| {
-            it.as_slice()[usize::from(self.has_trait_implied_predicate)..].iter().copied()
+    pub fn explicit_clauses(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
+        self.clauses.get().map_bound(|it| {
+            it.as_slice()[usize::from(self.has_trait_implied_clause)..].iter().copied()
         })
     }
 
@@ -2507,8 +2507,8 @@ pub(crate) fn trait_environment<'db>(db: &'db dyn HirDatabase, def: GenericDefId
     ) -> StoredClauses {
         let module = def.module(db);
         let interner = DbInterner::new_with(db, module.krate(db));
-        let predicates = GenericPredicates::query(db, def);
-        param_env_from_predicates(interner, predicates).clauses.store()
+        let clauses = GenericClauses::query(db, def);
+        param_env_from_clauses(interner, clauses).clauses.store()
     }
 }
 
@@ -2577,9 +2577,9 @@ fn generic_predicates<'db>(
         }
 
         if maybe_parent_generics.def() == def {
-            push_const_arg_has_type_predicates(db, &mut own_predicates, maybe_parent_generics);
+            push_const_arg_has_type_clauses(db, &mut own_clauses, maybe_parent_generics);
         } else {
-            push_const_arg_has_type_predicates(db, &mut parent_predicates, maybe_parent_generics);
+            push_const_arg_has_type_clauses(db, &mut parent_clauses, maybe_parent_generics);
         }
 
         if let Some(sized_trait) = sized_trait {
@@ -2627,7 +2627,7 @@ fn generic_predicates<'db>(
 
         // We do not clear `ctx.unsized_types`, as the `?Sized` clause of a child (e.g. an associated type) can
         // be declared on the parent (e.g. the trait). It is nevertheless fine to register the implicit `Sized`
-        // predicates before lowering the child, as a child cannot define a `?Sized` predicate for its parent.
+        // clauses before lowering the child, as a child cannot define a `?Sized` clause for its parent.
         // But we do have to lower the parent first.
     }
 
@@ -2651,30 +2651,30 @@ fn generic_predicates<'db>(
         parent_explicit_self_predicates_start + parent_predicates.len() as u32;
     let own_assoc_ty_bounds_start = own_predicates_start + own_predicates.len() as u32;
 
-    let predicates = GenericPredicates {
-        has_trait_implied_predicate,
-        parent_explicit_self_predicates_start,
-        own_predicates_start,
+    let clauses = GenericClauses {
+        has_trait_implied_clause,
+        parent_explicit_self_clauses_start,
+        own_clauses_start,
         own_assoc_ty_bounds_start,
-        predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
+        clauses: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
     };
-    return TyLoweringResult::new(predicates, diagnostics, defined_anon_consts);
+    return TyLoweringResult::new(clauses, diagnostics, defined_anon_consts);
 
     fn implicit_trait_predicate<'db>(
         interner: DbInterner<'db>,
         def: GenericDefId,
     ) -> Option<Clause<'db>> {
-        // For traits, add `Self: Trait` predicate. This is
-        // not part of the predicates that a user writes, but it
+        // For traits, add `Self: Trait` clause. This is
+        // not part of the clauses that a user writes, but it
         // is something that one must prove in order to invoke a
         // method or project an associated type.
         //
-        // In the chalk setup, this predicate is not part of the
-        // "predicates" for a trait item. But it is useful in
+        // In the chalk setup, this clause is not part of the
+        // "clauses" for a trait item. But it is useful in
         // rustc because if you directly (e.g.) invoke a trait
         // method like `Trait::method(...)`, you must naturally
         // prove that the trait applies to the types that were
-        // used, and adding the predicate into this list ensures
+        // used, and adding the clause into this list ensures
         // that this is done.
         if let GenericDefId::TraitId(def_id) = def {
             Some(TraitRef::identity(interner, def_id.into()).upcast(interner))
@@ -2684,15 +2684,15 @@ fn generic_predicates<'db>(
     }
 }
 
-fn push_const_arg_has_type_predicates<'db>(
+fn push_const_arg_has_type_clauses<'db>(
     db: &'db dyn HirDatabase,
-    predicates: &mut Vec<Clause<'db>>,
+    clauses: &mut Vec<Clause<'db>>,
     single_generics: &SingleGenerics<'db>,
 ) {
     let interner = DbInterner::new_no_crate(db);
     for (param_index, param_id, _) in single_generics.iter_with_idx() {
         let GenericParamId::ConstParamId(param_id) = param_id else { continue };
-        predicates.push(Clause(
+        clauses.push(Clause(
             ClauseKind::ConstArgHasType(
                 Const::new_param(interner, ParamConst { id: param_id, index: param_index }),
                 db.const_param_ty(param_id),
@@ -2936,8 +2936,8 @@ pub(crate) fn associated_ty_item_bounds<'db>(
 
     let mut bounds = Vec::new();
     for bound in &type_alias_data.bounds {
-        ctx.lower_type_bound(bound, self_ty, false).for_each(|(pred, _)| {
-            if let Some(bound) = pred
+        ctx.lower_type_bound(bound, self_ty, false).for_each(|(clause, _)| {
+            if let Some(bound) = clause
                 .kind()
                 .map_bound(|c| match c {
                     rustc_type_ir::ClauseKind::Trait(t) => {

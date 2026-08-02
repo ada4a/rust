@@ -98,7 +98,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .iter()
             .all(|(clause, _)| clause.as_trait_clause().map(|p| p.def_id()) != Some(meta_sized_did))
         {
-            elaborated_trait_bounds.retain(|(pred, _)| pred.def_id() != meta_sized_did);
+            elaborated_trait_bounds.retain(|(clause, _)| clause.def_id() != meta_sized_did);
         }
         debug!(?user_written_bounds, ?elaborated_trait_bounds);
 
@@ -126,14 +126,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // most importantly, that the supertraits don't contain `Self`,
         // to avoid ICEs.
         for (clause, span) in user_written_bounds {
-            if let Some(trait_pred) = clause.as_trait_clause() {
-                let violations = self.dyn_compatibility_violations(trait_pred.def_id());
+            if let Some(trait_clause) = clause.as_trait_clause() {
+                let violations = self.dyn_compatibility_violations(trait_clause.def_id());
                 if !violations.is_empty() {
                     let reported = report_dyn_incompatibility(
                         tcx,
                         span,
                         Some(hir_id),
-                        trait_pred.def_id(),
+                        trait_clause.def_id(),
                         &violations,
                     )
                     .emit_err();
@@ -204,9 +204,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut ordered_associated_items = vec![];
 
         if let Some((principal_trait, ref spans)) = principal_trait {
-            let principal_trait = principal_trait.map_bound(|trait_pred| {
-                assert_eq!(trait_pred.polarity, ty::ClausePolarity::Positive);
-                trait_pred.trait_ref
+            let principal_trait = principal_trait.map_bound(|trait_clause| {
+                assert_eq!(trait_clause.polarity, ty::ClausePolarity::Positive);
+                trait_clause.trait_ref
             });
 
             for ClauseWithSupertraitSpan { clause, supertrait_span } in traits::elaborate(
@@ -219,16 +219,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .filter_only_self()
             {
                 let clause = clause.instantiate_supertrait(tcx, principal_trait);
-                debug!("observing object predicate `{clause:?}`");
+                debug!("observing object clause `{clause:?}`");
 
-                let bound_predicate = clause.kind();
-                match bound_predicate.skip_binder() {
-                    ty::ClauseKind::Trait(pred) => {
+                let bound_clause = clause.kind();
+                match bound_clause.skip_binder() {
+                    ty::ClauseKind::Trait(clause) => {
                         // FIXME(negative_bounds): Handle this correctly...
                         let trait_ref =
-                            tcx.anonymize_bound_vars(bound_predicate.rebind(pred.trait_ref));
+                            tcx.anonymize_bound_vars(bound_clause.rebind(clause.trait_ref));
                         ordered_associated_items.extend(
-                            tcx.associated_items(pred.trait_ref.def_id)
+                            tcx.associated_items(clause.trait_ref.def_id)
                                 .in_definition_order()
                                 .filter(|item| item.can_have_equality_constraint(tcx))
                                 // Traits with RPITITs are simply not dyn compatible (for now).
@@ -236,12 +236,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .map(|item| (item.def_id, trait_ref)),
                         );
                     }
-                    ty::ClauseKind::Projection(pred) => {
-                        let pred = bound_predicate.rebind(pred);
+                    ty::ClauseKind::Projection(clause) => {
+                        let clause = bound_clause.rebind(clause);
                         // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =
-                            pred.skip_binder().term.walk().any(|arg| arg == dummy_self.into());
+                            clause.skip_binder().term.walk().any(|arg| arg == dummy_self.into());
 
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.
@@ -262,18 +262,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // the discussion in #56288 for alternatives.
                         if !references_self {
                             let key = (
-                                pred.item_def_id(),
+                                clause.item_def_id(),
                                 tcx.anonymize_bound_vars(
-                                    pred.map_bound(|proj| proj.projection_term.trait_ref(tcx)),
+                                    clause.map_bound(|proj| proj.projection_term.trait_ref(tcx)),
                                 ),
                             );
                             if !projection_bounds.contains_key(&key) {
-                                projection_bounds.insert(key, (pred, supertrait_span));
+                                projection_bounds.insert(key, (clause, supertrait_span));
                             }
                         }
 
                         self.check_elaborated_projection_mentions_input_lifetimes(
-                            pred,
+                            clause,
                             *spans.first().unwrap(),
                             supertrait_span,
                         );
@@ -339,16 +339,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // We remove duplicates by inserting into a `FxHashSet` to avoid re-ordering
         // the bounds
         let mut duplicates = FxHashSet::default();
-        auto_traits.retain(|(trait_pred, _)| duplicates.insert(trait_pred.def_id()));
+        auto_traits.retain(|(trait_clause, _)| duplicates.insert(trait_clause.def_id()));
 
         debug!(?principal_trait);
         debug!(?auto_traits);
 
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
-        let principal_trait_ref = principal_trait.map(|(trait_pred, spans)| {
-            trait_pred.map_bound(|trait_pred| {
-                let trait_ref = trait_pred.trait_ref;
-                assert_eq!(trait_pred.polarity, ty::ClausePolarity::Positive);
+        let principal_trait_ref = principal_trait.map(|(trait_clause, spans)| {
+            trait_clause.map_bound(|trait_clause| {
+                let trait_ref = trait_clause.trait_ref;
+                assert_eq!(trait_clause.polarity, ty::ClausePolarity::Positive);
                 assert_eq!(trait_ref.self_ty(), dummy_self);
 
                 let span = *spans.first().unwrap();
@@ -420,11 +420,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut auto_trait_predicates: Vec<_> = auto_traits
             .into_iter()
-            .map(|(trait_pred, _)| {
-                assert_eq!(trait_pred.polarity(), ty::ClausePolarity::Positive);
-                assert_eq!(trait_pred.self_ty().skip_binder(), dummy_self);
+            .map(|(trait_clause, _)| {
+                assert_eq!(trait_clause.polarity(), ty::ClausePolarity::Positive);
+                assert_eq!(trait_clause.self_ty().skip_binder(), dummy_self);
 
-                ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_pred.def_id()))
+                ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_clause.def_id()))
             })
             .collect();
         auto_trait_predicates.dedup();
@@ -471,10 +471,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Check that elaborating the principal of a trait ref doesn't lead to projections
     /// that are unconstrained. This can happen because an otherwise unconstrained
     /// *type variable* can be substituted with a type that has late-bound regions. See
-    /// `elaborated-predicates-unconstrained-late-bound.rs` for a test.
+    /// `elaborated-clause-unconstrained-late-bound.rs` for a test.
     fn check_elaborated_projection_mentions_input_lifetimes(
         &self,
-        pred: ty::PolyProjectionClause<'tcx>,
+        clause: ty::PolyProjectionClause<'tcx>,
         span: Span,
         supertrait_span: Span,
     ) {
@@ -487,10 +487,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         //
         //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
         //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
-        let late_bound_in_projection_term =
-            tcx.collect_constrained_late_bound_regions(pred.map_bound(|pred| pred.projection_term));
+        let late_bound_in_projection_term = tcx
+            .collect_constrained_late_bound_regions(clause.map_bound(|pred| pred.projection_term));
         let late_bound_in_term =
-            tcx.collect_referenced_late_bound_regions(pred.map_bound(|pred| pred.term));
+            tcx.collect_referenced_late_bound_regions(clause.map_bound(|pred| pred.term));
         debug!(?late_bound_in_projection_term);
         debug!(?late_bound_in_term);
 
@@ -502,7 +502,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             late_bound_in_projection_term,
             late_bound_in_term,
             |br_name| {
-                let item_name = tcx.item_name(pred.item_def_id());
+                let item_name = tcx.item_name(clause.item_def_id());
                 struct_span_code_err!(
                     self.dcx(),
                     span,

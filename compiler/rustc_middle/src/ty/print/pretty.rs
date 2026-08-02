@@ -1049,12 +1049,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let mut has_negative_sized_bound = false;
         let mut has_meta_sized_bound = false;
 
-        for (predicate, _) in
+        for (clause, _) in
             bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
         {
-            let bound_predicate = predicate.kind();
+            let bound_clause = clause.kind();
 
-            match bound_predicate.skip_binder() {
+            match bound_clause.skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
                     // With `feature(sized_hierarchy)`, don't print `?Sized` as an alias for
                     // `MetaSized`, and skip sizedness bounds to be added at the end.
@@ -1077,14 +1077,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
 
                     self.insert_trait_and_projection(
-                        bound_predicate.rebind(pred),
+                        bound_clause.rebind(pred),
                         None,
                         &mut traits,
                         &mut fn_traits,
                     );
                 }
                 ty::ClauseKind::Projection(pred) => {
-                    let proj = bound_predicate.rebind(pred);
+                    let proj = bound_clause.rebind(pred);
                     let trait_ref = proj.map_bound(|proj| TraitClause {
                         trait_ref: proj.projection_term.trait_ref(tcx),
                         polarity: ty::ClausePolarity::Positive,

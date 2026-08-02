@@ -2108,8 +2108,8 @@ impl<'tcx> TyCtxt<'tcx> {
         };
         let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
 
-        self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
-            let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
+        self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(clause, _)| {
+            let ty::ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder() else {
                 return false;
             };
             trait_predicate.trait_ref.def_id == future_trait

@@ -51,9 +51,9 @@ fn is_structurally_unsized<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 fn has_structurally_impossible_sized_clause<'tcx>(
     tcx: TyCtxt<'tcx>,
     sized_trait: DefId,
-    predicate: ty::Clause<'tcx>,
+    clause: ty::Clause<'tcx>,
 ) -> bool {
-    let Some(trait_predicate) = predicate.as_trait_clause() else {
+    let Some(trait_predicate) = clause.as_trait_clause() else {
         return false;
     };
     let trait_predicate = trait_predicate.skip_binder();

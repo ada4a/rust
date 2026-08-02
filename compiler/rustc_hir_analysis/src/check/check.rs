@@ -347,12 +347,12 @@ fn check_opaque_meets_bounds<'tcx>(
     // HACK: We eagerly instantiate some bounds to report better errors for them...
     // This isn't necessary for correctness, since we register these bounds when
     // equating the opaque below, but we should clean this up in the new solver.
-    for (predicate, pred_span) in tcx
+    for (clause, clause_span) in tcx
         .explicit_item_bounds(def_id)
         .iter_instantiated_copied(tcx, args)
         .map(Unnormalized::skip_norm_wip)
     {
-        let predicate = predicate.fold_with(&mut BottomUpFolder {
+        let clause = clause.fold_with(&mut BottomUpFolder {
             tcx,
             ty_op: |ty| if ty == opaque_ty { hidden_ty } else { ty },
             lt_op: |lt| lt,
@@ -364,10 +364,10 @@ fn check_opaque_meets_bounds<'tcx>(
             ObligationCause::new(
                 span,
                 def_id,
-                ObligationCauseCode::OpaqueTypeBound(pred_span, definition_def_id),
+                ObligationCauseCode::OpaqueTypeBound(clause_span, definition_def_id),
             ),
             param_env,
-            predicate,
+            clause,
         ));
     }
 
@@ -2124,8 +2124,8 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             .iter()
             .filter_map(|(clause, span)| {
                 let bounded_ty = match clause.kind().skip_binder() {
-                    ty::ClauseKind::Trait(pred) => pred.trait_ref.self_ty(),
-                    ty::ClauseKind::TypeOutlives(pred) => pred.0,
+                    ty::ClauseKind::Trait(clause) => clause.trait_ref.self_ty(),
+                    ty::ClauseKind::TypeOutlives(clause) => clause.0,
                     _ => return None,
                 };
                 if let ty::Param(param) = bounded_ty.kind() {
@@ -2159,11 +2159,11 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             let span = tcx.def_span(param.def_id);
             let param_name = Ident::new(param.name, span);
 
-            // The corresponding predicates are post-`Sized`-elaboration. Therefore we
+            // The corresponding clauses are post-`Sized`-elaboration. Therefore we
             // * check for emptiness to detect lone user-written `?Sized` bounds
-            // * compare the param span to the pred span to detect lone user-written `Sized` bounds
+            // * compare the param span to the clause span to detect lone user-written `Sized` bounds
             let has_explicit_bounds = bounded_params.is_empty()
-                || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| pred_sp != span);
+                || (*bounded_params).get(&param.index).is_some_and(|&&clause_sp| clause_sp != span);
             let const_param_help = !has_explicit_bounds;
 
             let mut diag = tcx.dcx().create_err(diagnostics::UnusedGenericParameter {
