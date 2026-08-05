@@ -2,6 +2,8 @@ use std::ops::ControlFlow;
 
 use indexmap::IndexSet;
 use quote::{ToTokens, quote};
+#[cfg(not(feature = "nightly"))]
+use syn::parse::Parse;
 use syn::visit_mut::VisitMut;
 use syn::{Attribute, parse_quote};
 use synstructure::decl_derive;
@@ -17,7 +19,31 @@ decl_derive!(
 );
 #[cfg(not(feature = "nightly"))]
 decl_derive!(
-    [GenericTypeVisitable] => customizable_type_visitable_derive
+    [ GenericTypeVisitable, attributes(generic_type_visitable)] =>
+        /// By default, `#[derive(GenericTypeVisitable)]` will add `GenericTypeVisitable`
+        /// bounds to every field of the item. However, this results in infinite recursion
+        /// for types whose fields mention `Self`, such as:
+        ///
+        /// ```
+        /// struct List {
+        ///     next: Option<Box<Self>>
+        /// }
+        /// ```
+        ///
+        /// The `#[generic_type_visitable(unsafe(bounds(...)))]` attribute provides an escape
+        /// hatch: it allows you to override the list of trait bounds added to the field's type.
+        /// Namely, it should contain `GenericTypeVisitable` bounds for all the non-`Self`
+        /// types present in the field
+        ///
+        /// For the example above, that list will be empty:
+        /// ```ignore
+        /// #[derive(GenericTypeVisitable)]
+        /// struct List {
+        ///     #[generic_type_visitable(unsafe(bounds()))]
+        ///     next: Option<Box<Self>>
+        /// }
+        /// ```
+        customizable_type_visitable_derive
 );
 
 struct TransformedTy {
@@ -362,13 +388,30 @@ fn customizable_type_visitable_derive(
     }
 
     s.add_impl_generic(parse_quote!(__V));
-    s.add_bounds(synstructure::AddBounds::Fields);
+    s.add_bounds(synstructure::AddBounds::None);
+
+    let mut wc = vec![];
     let body_visit = s.each(|bind| {
+        let field = bind.ast();
+        let ty = field.ty.clone();
+
+        match field_generic_type_visitable_bound(field) {
+            Ok(Some(bounds)) => wc.extend(bounds),
+            Ok(None) => {
+                // no overridden bounds, add the default one
+                wc.push(parse_quote! { #ty: ::rustc_type_ir::GenericTypeVisitable::<__V> });
+            }
+            Err(err) => return err.into_compile_error(),
+        }
+
         quote! {
             ::rustc_type_ir::GenericTypeVisitable::<__V>::generic_visit_with(#bind, __visitor);
         }
     });
     s.bind_with(|_| synstructure::BindStyle::Move);
+    for wc in wc {
+        s.add_where_predicate(wc);
+    }
 
     s.unsafe_bound_impl(
         quote!(::rustc_type_ir::GenericTypeVisitable<__V>),
@@ -387,4 +430,62 @@ fn customizable_type_visitable_derive(
 #[proc_macro_derive(GenericTypeVisitable)]
 pub fn customizable_type_visitable_derive(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
     proc_macro::TokenStream::new()
+}
+
+#[cfg(not(feature = "nightly"))]
+fn field_generic_type_visitable_bound(
+    field: &syn::Field,
+) -> syn::Result<Option<impl Iterator<Item = syn::WherePredicate>>> {
+    let mut attrs =
+        field.attrs.iter().filter(|attr| attr.path().is_ident("generic_type_visitable"));
+    let Some(attr) = attrs.next() else {
+        return Ok(None);
+    };
+
+    if attrs.next().is_some() {
+        return Err(syn::Error::new_spanned(
+            field,
+            "multiple `#[generic_type_visitable]` attributes on field",
+        ));
+    }
+
+    parse_generic_type_visitable_bound(attr).map(Some)
+}
+
+#[cfg(not(feature = "nightly"))]
+mod kw {
+    syn::custom_keyword!(bounds);
+}
+
+#[cfg(not(feature = "nightly"))]
+/// Parses a bound like:
+/// ```
+/// struct Foo {
+///     #[generic_type_visitable(unsafe(bounds(Bar: GenericTypeVisitable)))]
+///     contains_self: (Box<Self>, Bar),
+///     #[generic_type_visitable(unsafe(bounds()))]
+///     just_self: Box<Self>,
+/// }
+/// struct Bar;
+/// ```
+fn parse_generic_type_visitable_bound(
+    attr: &Attribute,
+) -> syn::Result<impl Iterator<Item = syn::WherePredicate>> {
+    attr.parse_args_with(|input: syn::parse::ParseStream<'_>| {
+        if input.peek(kw::bounds) {
+            return Err(input.error("`bounds(...)` must be wrapped in `unsafe(...)`"));
+        }
+
+        let _ = input.parse::<syn::Token![unsafe]>()?;
+        let content;
+        syn::parenthesized!(content in input);
+        content.parse::<kw::bounds>()?;
+        let predicates;
+        syn::parenthesized!(predicates in content);
+
+        let proof =
+            predicates.parse_terminated(syn::WherePredicate::parse, syn::Token![,])?.into_iter();
+
+        if content.is_empty() { Ok(proof) } else { Err(content.error("unexpected token")) }
+    })
 }
