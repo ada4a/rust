@@ -117,8 +117,8 @@ pub enum RegionConstraint<I: Interner> {
     /// and there may wind up being assumptions we can use to prove this when we're in a smaller universe.
     PlaceholderTyOutlives(I::Ty, Region<I>),
 
-    And(Box<[RegionConstraint<I>]>),
-    Or(Box<[RegionConstraint<I>]>),
+    And(#[generic_type_visitable(unsafe(bounds()))] Box<[RegionConstraint<I>]>),
+    Or(#[generic_type_visitable(unsafe(bounds()))] Box<[RegionConstraint<I>]>),
 }
 
 // This is not a derived impl because a perfect derive leads to inductive
