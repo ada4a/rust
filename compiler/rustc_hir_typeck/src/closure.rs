@@ -1031,19 +1031,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_future_output_from_projection(
         &self,
         cause_span: Span,
-        predicate: ty::PolyProjectionClause<'tcx>,
+        projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        debug!("deduce_future_output_from_projection(predicate={:?})", predicate);
+        debug!("deduce_future_output_from_projection(projection={:?})", projection);
 
-        // We do not expect any bound regions in our predicate, so
+        // We do not expect any bound regions in our clause, so
         // skip past the bound vars.
-        let Some(predicate) = predicate.no_bound_vars() else {
+        let Some(projection) = projection.no_bound_vars() else {
             debug!("deduce_future_output_from_projection: has late-bound regions");
             return None;
         };
 
         // Check that this is a projection from the `Future` trait.
-        let trait_def_id = predicate.projection_term.trait_def_id(self.tcx);
+        let trait_def_id = projection.projection_term.trait_def_id(self.tcx);
         if !self.tcx.is_lang_item(trait_def_id, LangItem::Future) {
             debug!("deduce_future_output_from_projection: not a future");
             return None;
@@ -1052,11 +1052,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
         let output_assoc_item = self.tcx.associated_item_def_ids(trait_def_id)[0];
-        if output_assoc_item != predicate.def_id() {
+        if output_assoc_item != projection.def_id() {
             span_bug!(
                 cause_span,
                 "projecting associated item `{:?}` from future, which is not Output `{:?}`",
-                predicate.projection_term.kind,
+                projection.projection_term.kind,
                 output_assoc_item,
             );
         }
@@ -1064,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type from the projection. Note that there can
         // be no bound variables in this type because the "self type"
         // does not have any regions in it.
-        let output_ty = self.resolve_vars_if_possible(predicate.term);
+        let output_ty = self.resolve_vars_if_possible(projection.term);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         // This is a projection on a Fn trait so will always be a type.
         Some(output_ty.expect_type())
