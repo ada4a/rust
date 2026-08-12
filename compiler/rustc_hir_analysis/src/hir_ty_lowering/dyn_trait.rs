@@ -221,14 +221,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .filter_only_self()
             {
                 let clause = clause.instantiate_supertrait(tcx, principal_trait);
-                debug!("observing object predicate `{clause:?}`");
+                debug!("observing object clause `{clause:?}`");
 
-                let bound_predicate = clause.kind();
-                match bound_predicate.skip_binder() {
+                let bound_clause = clause.kind();
+                match bound_clause.skip_binder() {
                     ty::ClauseKind::Trait(pred) => {
                         // FIXME(negative_bounds): Handle this correctly...
                         let trait_ref =
-                            tcx.anonymize_bound_vars(bound_predicate.rebind(pred.trait_ref));
+                            tcx.anonymize_bound_vars(bound_clause.rebind(pred.trait_ref));
                         ordered_associated_items.extend(
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
@@ -239,7 +239,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         );
                     }
                     ty::ClauseKind::Projection(pred) => {
-                        let pred = bound_predicate.rebind(pred);
+                        let pred = bound_clause.rebind(pred);
                         // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =

@@ -1927,7 +1927,7 @@ impl<'tcx> CoerceMany<'tcx> {
                         .iter_identity()
                         .map(Unnormalized::skip_norm_wip)
                         .filter_map(|clause| {
-                            let predicate = clause
+                            let clause = clause
                                 .kind()
                                 .map_bound(|clause| match clause {
                                     ty::ClauseKind::Trait(trait_pred) => {
@@ -1947,7 +1947,7 @@ impl<'tcx> CoerceMany<'tcx> {
                                 fcx.tcx,
                                 ObligationCause::dummy(),
                                 fcx.param_env,
-                                predicate,
+                                clause,
                             ))
                         }),
                 );

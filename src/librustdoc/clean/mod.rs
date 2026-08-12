@@ -433,9 +433,9 @@ pub(crate) fn clean_clause<'tcx>(
     let bound_clause = clause.kind();
     match bound_clause.skip_binder() {
         ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_clause.rebind(pred), cx),
-        ty::ClauseKind::RegionOutlives(pred) => Some(clean_region_outlives_clause(pred, cx.tcx)),
-        ty::ClauseKind::TypeOutlives(pred) => {
-            Some(clean_type_outlives_clause(bound_clause.rebind(pred), cx))
+        ty::ClauseKind::RegionOutlives(clause) => Some(clean_region_outlives_clause(clause, cx.tcx)),
+        ty::ClauseKind::TypeOutlives(clause) => {
+            Some(clean_type_outlives_clause(bound_clause.rebind(clause), cx))
         }
         ty::ClauseKind::Projection(pred) => {
             Some(clean_projection_predicate(bound_clause.rebind(pred), cx))
@@ -445,7 +445,7 @@ pub(crate) fn clean_clause<'tcx>(
         | ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::ConstArgHasType(..)
         | ty::ClauseKind::UnstableFeature(..)
-        // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `~const`.
+        // FIXME(const_trait_impl): We can probably use this `HostEffect` clause to render `~const`.
         | ty::ClauseKind::HostEffect(_) => None,
     }
 }

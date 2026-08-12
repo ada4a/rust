@@ -2739,8 +2739,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.explicit_item_self_bounds(def_id)
             .iter_instantiated_copied(self, args)
             .map(ty::Unnormalized::skip_norm_wip)
-            .find_map(|(predicate, _)| {
-                predicate
+            .find_map(|(clause, _)| {
+                clause
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::ClauseKind::Projection(projection_predicate)

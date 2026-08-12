@@ -120,13 +120,13 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         return false;
                     }
 
-                    for (predicate, _span) in cx
+                    for (clause, _span) in cx
                         .tcx
                         .explicit_item_self_bounds(def_id)
                         .iter_identity_copied()
                         .map(Unnormalized::skip_norm_wip)
                     {
-                        match predicate.kind().skip_binder() {
+                        match clause.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
                             ty::ClauseKind::Trait(trait_predicate)
@@ -881,19 +881,19 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionAliasTy<'tcx>)
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for (pred, _) in cx
+    for (clause, _) in cx
         .tcx
         .explicit_item_bounds(ty.kind)
         .iter_instantiated_copied(cx.tcx, ty.args)
         .map(Unnormalized::skip_norm_wip)
     {
-        match pred.kind().skip_binder() {
+        match clause.kind().skip_binder() {
             ty::ClauseKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id())) =>
             {
-                let i = pred.kind().rebind(p.trait_ref.args.type_at(1));
+                let i = clause.kind().rebind(p.trait_ref.args.type_at(1));
 
                 if inputs.is_some_and(|inputs| inputs != i) {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -908,7 +908,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionAliasTy<'tcx>)
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = pred.kind().rebind(p.term.as_type()).transpose();
+                output = clause.kind().rebind(p.term.as_type()).transpose();
             },
             _ => (),
         }

@@ -42,7 +42,7 @@ pub fn expand_trait_aliases<'tcx>(
     let mut projection_preds = vec![];
     let mut seen_projection_preds = FxHashSet::default();
 
-    let mut queue: VecDeque<_> = clauses.into_iter().map(|(p, s)| (p, smallvec![s])).collect();
+    let mut queue: VecDeque<_> = clauses.into_iter().map(|(c, s)| (c, smallvec![s])).collect();
 
     while let Some((clause, spans)) = queue.pop_front() {
         match clause.kind().skip_binder() {

@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
 
         // If this is an RPITIT from a trait method with no body, then skip.
         // That's because although we may have an opaque type on the function,
-        // it won't have a hidden type, so proving predicates about it is
+        // it won't have a hidden type, so proving clauses about it is
         // not really meaningful.
         if let hir::OpaqueTyOrigin::FnReturn { parent: method_def_id, .. } = opaque.origin
             && let hir::Node::TraitItem(trait_item) = cx.tcx.hir_node_by_def_id(method_def_id)
@@ -88,14 +88,14 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
-        for (pred, pred_span) in cx
+        for (clause, clause_span) in cx
             .tcx
             .explicit_item_bounds(def_id)
             .iter_identity_copied()
             .map(Unnormalized::skip_norm_wip)
         {
-            infcx.enter_forall(pred.kind(), |predicate| {
-                let ty::ClauseKind::Projection(proj) = predicate else {
+            infcx.enter_forall(clause.kind(), |clause| {
+                let ty::ClauseKind::Projection(proj) = clause else {
                     return;
                 };
                 // Only check types, since those are the only things that may
@@ -143,19 +143,19 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // For example, in `impl Trait<Assoc = impl Send>`, for all of the bounds on `Assoc`,
                 // e.g. `type Assoc: OtherTrait`, replace `<impl Trait as Trait>::Assoc: OtherTrait`
                 // with `impl Send: OtherTrait`.
-                for (assoc_pred, assoc_pred_span) in cx
+                for (assoc_clause, assoc_clause_span) in cx
                     .tcx
                     .explicit_item_bounds(proj.def_id())
                     .iter_instantiated_copied(cx.tcx, proj.projection_term.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
-                    let assoc_pred = assoc_pred.fold_with(proj_replacer);
+                    let assoc_clause = assoc_clause.fold_with(proj_replacer);
 
                     let ocx = ObligationCtxt::new(infcx);
-                    let assoc_pred = ocx.normalize(
+                    let assoc_clause = ocx.normalize(
                         &traits::ObligationCause::dummy(),
                         cx.param_env,
-                        Unnormalized::new_wip(assoc_pred),
+                        Unnormalized::new_wip(assoc_clause),
                     );
                     if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                         // Can't normalize for some reason...?
@@ -166,16 +166,16 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         cx.tcx,
                         traits::ObligationCause::dummy(),
                         cx.param_env,
-                        assoc_pred,
+                        assoc_clause,
                     ));
 
-                    // If that predicate doesn't hold modulo regions (but passed during type-check),
+                    // If that clause doesn't hold modulo regions (but passed during type-check),
                     // then we must've taken advantage of the hack in `project_and_unify_types` where
                     // we replace opaques with inference vars. Emit a warning!
                     if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                         // If it's a trait bound and an opaque that doesn't satisfy it,
                         // then we can emit a suggestion to add the bound.
-                        let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
+                        let add_bound = match (proj_term.kind(), assoc_clause.kind().skip_binder()) {
                             (
                                 ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }),
                                 ty::ClauseKind::Trait(trait_pred),
@@ -188,7 +188,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
 
                         cx.emit_span_lint(
                             OPAQUE_HIDDEN_INFERRED_BOUND,
-                            pred_span,
+                            clause_span,
                             OpaqueHiddenInferredBoundLint {
                                 ty: Ty::new_opaque(
                                     cx.tcx,
@@ -197,7 +197,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                                     ty::GenericArgs::identity_for_item(cx.tcx, def_id),
                                 ),
                                 proj_ty: proj_term,
-                                assoc_pred_span,
+                                assoc_clause_span,
                                 add_bound,
                             },
                         );
@@ -214,7 +214,7 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
     ty: Ty<'tcx>,
     proj_ty: Ty<'tcx>,
     #[label("this associated type bound is unsatisfied for `{$proj_ty}`")]
-    assoc_pred_span: Span,
+    assoc_clause_span: Span,
     #[subdiagnostic]
     add_bound: Option<AddBound<'tcx>>,
 }

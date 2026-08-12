@@ -356,30 +356,30 @@ impl<'tcx> InferCtxt<'tcx> {
         };
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
-        for (predicate, _) in
+        for (clause, _) in
             item_bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
         {
-            let predicate = replace_opaques_in(predicate, goals);
+            let clause = replace_opaques_in(clause, goals);
 
-            // Require that the predicate holds for the concrete type.
-            debug!(?predicate);
-            goals.push(Goal::new(self.tcx, param_env, predicate));
+            // Require that the clause holds for the concrete type.
+            debug!(?clause);
+            goals.push(Goal::new(self.tcx, param_env, clause));
         }
 
         // If this opaque is being defined and it's conditionally const,
         if self.tcx.is_conditionally_const(def_id) {
             let item_bounds = tcx.explicit_implied_const_bounds(def_id);
-            for (predicate, _) in
+            for (clause, _) in
                 item_bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
             {
-                let predicate = replace_opaques_in(
-                    predicate.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe),
+                let clause = replace_opaques_in(
+                    clause.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe),
                     goals,
                 );
 
-                // Require that the predicate holds for the concrete type.
-                debug!(?predicate);
-                goals.push(Goal::new(self.tcx, param_env, predicate));
+                // Require that the clause holds for the concrete type.
+                debug!(?clause);
+                goals.push(Goal::new(self.tcx, param_env, clause));
             }
         }
     }

@@ -1116,7 +1116,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                         hir::BoundConstness::Maybe(_) => {
                             // We don't emit a const bound here, since that would mean that we
-                            // unconditionally need to prove a `HostEffect` predicate, even when
+                            // unconditionally need to prove a `HostEffect` clause, even when
                             // the predicates are being instantiated in a non-const context. This
                             // is instead handled in the `const_conditions` query.
                         }

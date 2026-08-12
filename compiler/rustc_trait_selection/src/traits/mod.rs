@@ -255,9 +255,9 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
 
 fn set_projection_term_to_non_rigid<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: impl IntoIterator<Item = ty::Clause<'tcx>>,
+    clauses: impl IntoIterator<Item = ty::Clause<'tcx>>,
 ) -> impl Iterator<Item = ty::Clause<'tcx>> {
-    predicates.into_iter().map(move |clause| {
+    clauses.into_iter().map(move |clause| {
         if let ty::ClauseKind::Projection(projection_pred) = clause.kind().skip_binder() {
             clause
                 .kind()

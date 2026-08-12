@@ -80,7 +80,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let generics = self.tcx.generics_of(def_id);
-        let (predicate_args, predicate_self_type_to_point_at) =
+        let (clause_args, clause_self_type_to_point_at) =
             match uninstantiated_clause.kind().skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
                     (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
@@ -95,7 +95,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
         let find_param_matching = |matches: &dyn Fn(ParamTerm) -> bool| {
-            predicate_args.iter().find_map(|arg| {
+            clause_args.iter().find_map(|arg| {
                 arg.walk().find(|arg| match arg.kind() {
                     ty::GenericArgKind::Type(ty) if let ty::Param(param_ty) = ty.kind() => {
                         matches(ParamTerm::Ty(*param_ty))
@@ -144,7 +144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 error,
                 def_id,
                 expr,
-                predicate_self_type_to_point_at,
+                clause_self_type_to_point_at,
                 param_to_point_at,
                 fallback_param_to_point_at,
                 self_param_to_point_at,
@@ -152,7 +152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             hir::Node::Ty(hir::Ty { kind: hir::TyKind::Path(qpath), .. }) => {
                 for param in [
-                    predicate_self_type_to_point_at,
+                    clause_self_type_to_point_at,
                     param_to_point_at,
                     fallback_param_to_point_at,
                     self_param_to_point_at,
@@ -290,7 +290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: &mut traits::FulfillmentError<'tcx>,
         callee_def_id: DefId,
         expr: &'tcx hir::Expr<'tcx>,
-        predicate_self_type_to_point_at: Option<ty::GenericArg<'tcx>>,
+        clause_self_type_to_point_at: Option<ty::GenericArg<'tcx>>,
         param_to_point_at: Option<ty::GenericArg<'tcx>>,
         fallback_param_to_point_at: Option<ty::GenericArg<'tcx>>,
         self_param_to_point_at: Option<ty::GenericArg<'tcx>>,
@@ -304,14 +304,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::Expr { kind: hir::ExprKind::Path(qpath), span: callee_span, .. },
                 args,
             ) => {
-                if let Some(param) = predicate_self_type_to_point_at
+                if let Some(param) = clause_self_type_to_point_at
                     && self.point_at_path_if_possible(error, callee_def_id, param, qpath)
                 {
                     return true;
                 }
 
                 for param in [
-                    predicate_self_type_to_point_at,
+                    clause_self_type_to_point_at,
                     param_to_point_at,
                     fallback_param_to_point_at,
                     self_param_to_point_at,
@@ -356,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         error,
                         callee_def_id,
                         call_expr,
-                        predicate_self_type_to_point_at,
+                        clause_self_type_to_point_at,
                         param_to_point_at,
                         fallback_param_to_point_at,
                         self_param_to_point_at,
@@ -365,7 +365,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Otherwise, just try to point at path components.
 
-                if let Some(param) = predicate_self_type_to_point_at
+                if let Some(param) = clause_self_type_to_point_at
                     && self.point_at_path_if_possible(error, callee_def_id, param, &qpath)
                 {
                     return true;
@@ -381,7 +381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::MethodCall(segment, receiver, args, ..) => {
-                if let Some(param) = predicate_self_type_to_point_at
+                if let Some(param) = clause_self_type_to_point_at
                     && self.point_at_generic_if_possible(error, callee_def_id, param, segment)
                 {
                     // HACK: This is not correct, since `predicate_self_type_to_point_at` might
@@ -465,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for param in [
-                    predicate_self_type_to_point_at,
+                    clause_self_type_to_point_at,
                     param_to_point_at,
                     fallback_param_to_point_at,
                     self_param_to_point_at,
