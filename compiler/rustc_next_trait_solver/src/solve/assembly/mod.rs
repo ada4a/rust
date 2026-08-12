@@ -103,7 +103,7 @@ where
                 | ty::ClauseKind::ConstEvaluatable(..)
                 | ty::ClauseKind::HostEffect(..)
                 | ty::ClauseKind::UnstableFeature(..) => {
-                    unreachable!("expected trait or projection predicate as an assumption")
+                    unreachable!("expected trait or projection clause as an assumption")
                 }
             });
 

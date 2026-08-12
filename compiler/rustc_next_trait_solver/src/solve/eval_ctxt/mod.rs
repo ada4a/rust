@@ -1080,9 +1080,9 @@ where
         }
     }
 
-    /// Is the projection predicate is of the form `exists<T> <Ty as Trait>::Assoc = T`.
+    /// Is the projection clause is of the form `exists<T> <Ty as Trait>::Assoc = T`.
     ///
-    /// This is the case if the `term` does not occur in any other part of the predicate
+    /// This is the case if the `term` does not occur in any other part of the clause
     /// and is able to name all other placeholder and inference variables.
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn term_is_fully_unconstrained(&self, goal: Goal<I, ty::NormalizesTo<I>>) -> bool {

@@ -1935,9 +1935,9 @@ impl<'tcx> CoerceMany<'tcx> {
                                             trait_pred.with_replaced_self_ty(fcx.tcx, ty),
                                         ))
                                     }
-                                    ty::ClauseKind::Projection(proj_pred) => {
+                                    ty::ClauseKind::Projection(proj_clause) => {
                                         Some(ty::ClauseKind::Projection(
-                                            proj_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                            proj_clause.with_replaced_self_ty(fcx.tcx, ty),
                                         ))
                                     }
                                     _ => None,

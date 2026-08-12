@@ -488,7 +488,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ));
             }
             // Lower an equality constraint like `Item = u32` as found in HIR bound `T: Iterator<Item = u32>`
-            // to a projection predicate: `<T as Iterator>::Item = u32`.
+            // to a projection clause: `<T as Iterator>::Item = u32`.
             hir::AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),

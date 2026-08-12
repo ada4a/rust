@@ -637,9 +637,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
     }
 
-    fn is_self_referential_projection(&self, p: ty::PolyProjectionClause<'tcx>) -> bool {
-        if let Some(ty) = p.term().skip_binder().as_type() {
-            matches!(ty.kind(), ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty())
+    fn is_self_referential_projection(&self, c: ty::PolyProjectionClause<'tcx>) -> bool {
+        if let Some(ty) = c.term().skip_binder().as_type() {
+            matches!(ty.kind(), ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &c.skip_binder().projection_term.expect_ty())
         } else {
             false
         }
@@ -685,8 +685,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(c)) => {
-                    let p = bound_predicate.rebind(c);
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(p)) => {
+                    let p = bound_predicate.rebind(p);
                     if self.is_param_no_infer(p.skip_binder().trait_ref.args) && is_new_pred {
                         self.add_user_clause(computed_clauses, predicate.expect_clause());
                     }
@@ -723,10 +723,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         //
                         // For these reasons, we ignore these weird predicates,
                         // ensuring that we're able to properly synthesize an auto trait impl
-                        if self.is_self_referential_projection(p) {
+                        if self.is_self_referential_projection(c) {
                             debug!(
                                 "evaluate_nested_obligations: encountered a projection
-                                 predicate equating a type with itself! Skipping"
+                                 clause equating a type with itself! Skipping"
                             );
                         } else {
                             self.add_user_clause(computed_clauses, predicate.expect_clause());

@@ -16,12 +16,12 @@ use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
-/// Return the trait and projection predicates that come from eagerly expanding the
-/// trait aliases in the list of clauses. For each trait predicate, record a stack
-/// of spans that trace from the user-written trait alias bound. For projection predicates,
-/// just record the span of the projection itself.
+/// Return the trait and projection clauses that come from eagerly expanding the trait aliases
+/// in the list of clauses. For each trait clause, record a stack of spans that trace from the
+/// user-written trait alias bound. For projection clauses, just record the span of the
+/// projection itself.
 ///
-/// For trait aliases, we don't deduplicte the predicates, since we currently do not
+/// For trait aliases, we don't deduplicte the clauses, since we currently do not
 /// consider duplicated traits as a single trait for the purposes of our "one trait principal"
 /// restriction; however, for projections we do deduplicate them.
 ///
@@ -38,18 +38,18 @@ pub fn expand_trait_aliases<'tcx>(
     Vec<(ty::PolyTraitClause<'tcx>, SmallVec<[Span; 1]>)>,
     Vec<(ty::PolyProjectionClause<'tcx>, Span)>,
 ) {
-    let mut trait_preds = vec![];
-    let mut projection_preds = vec![];
-    let mut seen_projection_preds = FxHashSet::default();
+    let mut trait_clauses = vec![];
+    let mut projection_clauses = vec![];
+    let mut seen_projection_clauses = FxHashSet::default();
 
     let mut queue: VecDeque<_> = clauses.into_iter().map(|(c, s)| (c, smallvec![s])).collect();
 
     while let Some((clause, spans)) = queue.pop_front() {
         match clause.kind().skip_binder() {
-            ty::ClauseKind::Trait(trait_pred) => {
-                if tcx.is_trait_alias(trait_pred.def_id()) {
+            ty::ClauseKind::Trait(trait_clause) => {
+                if tcx.is_trait_alias(trait_clause.def_id()) {
                     queue.extend(
-                        tcx.explicit_super_clauses_of(trait_pred.def_id())
+                        tcx.explicit_super_clauses_of(trait_clause.def_id())
                             .iter_identity_copied()
                             .map(Unnormalized::skip_norm_wip)
                             .map(|(super_clause, span)| {
@@ -58,22 +58,22 @@ pub fn expand_trait_aliases<'tcx>(
                                 (
                                     super_clause.instantiate_supertrait(
                                         tcx,
-                                        clause.kind().rebind(trait_pred.trait_ref),
+                                        clause.kind().rebind(trait_clause.trait_ref),
                                     ),
                                     spans,
                                 )
                             }),
                     );
                 } else {
-                    trait_preds.push((clause.kind().rebind(trait_pred), spans));
+                    trait_clauses.push((clause.kind().rebind(trait_clause), spans));
                 }
             }
-            ty::ClauseKind::Projection(projection_pred) => {
-                let projection_pred = clause.kind().rebind(projection_pred);
-                if !seen_projection_preds.insert(tcx.anonymize_bound_vars(projection_pred)) {
+            ty::ClauseKind::Projection(projection_clause) => {
+                let projection_clause = clause.kind().rebind(projection_clause);
+                if !seen_projection_clauses.insert(tcx.anonymize_bound_vars(projection_clause)) {
                     continue;
                 }
-                projection_preds.push((projection_pred, *spans.last().unwrap()));
+                projection_clauses.push((projection_clause, *spans.last().unwrap()));
             }
             ty::ClauseKind::RegionOutlives(..)
             | ty::ClauseKind::TypeOutlives(..)
@@ -85,7 +85,7 @@ pub fn expand_trait_aliases<'tcx>(
         }
     }
 
-    (trait_preds, projection_preds)
+    (trait_clauses, projection_clauses)
 }
 
 ///////////////////////////////////////////////////////////////////////////

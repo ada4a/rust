@@ -35,7 +35,7 @@ pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 pub type PolyProjectionClause<'tcx> = ty::Binder<'tcx, ProjectionClause<'tcx>>;
 
 /// A statement that can be proven by a trait solver. This includes things that may
-/// show up in where clauses, such as trait predicates and projection predicates,
+/// show up in where clauses, such as trait predicates and projection clauses,
 /// and also things that are emitted as part of type checking such as `DynCompatible`
 /// predicate which is emitted when a type is coerced to a trait object.
 ///
@@ -563,7 +563,7 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ProjectionClause<'tcx>> for Predicate<'tcx> 
 
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyProjectionClause<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: PolyProjectionClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound(|p| PredicateKind::Clause(ClauseKind::Projection(p))).upcast(tcx)
+        from.map_bound(|c| PredicateKind::Clause(ClauseKind::Projection(c))).upcast(tcx)
     }
 }
 

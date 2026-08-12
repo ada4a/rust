@@ -1083,8 +1083,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         &mut fn_traits,
                     );
                 }
-                ty::ClauseKind::Projection(pred) => {
-                    let proj = bound_clause.rebind(pred);
+                ty::ClauseKind::Projection(clause) => {
+                    let proj = bound_clause.rebind(clause);
                     let trait_ref = proj.map_bound(|proj| TraitClause {
                         trait_ref: proj.projection_term.trait_ref(tcx),
                         polarity: ty::ClausePolarity::Positive,
@@ -3241,7 +3241,7 @@ define_print! {
             ty::ClauseKind::Trait(ref data) => data.print(p)?,
             ty::ClauseKind::RegionOutlives(clause) => clause.print(p)?,
             ty::ClauseKind::TypeOutlives(clause) => clause.print(p)?,
-            ty::ClauseKind::Projection(predicate) => predicate.print(p)?,
+            ty::ClauseKind::Projection(clause) => clause.print(p)?,
             ty::ClauseKind::HostEffect(clause) => clause.print(p)?,
             ty::ClauseKind::ConstArgHasType(ct, ty) => {
                 write!(p, "the constant `")?;

@@ -541,7 +541,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
         self.kind()
             .map_bound(
                 |clause| {
-                    if let ty::ClauseKind::Projection(p) = clause { Some(p) } else { None }
+                    if let ty::ClauseKind::Projection(c) = clause { Some(c) } else { None }
                 },
             )
             .transpose()

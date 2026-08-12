@@ -185,11 +185,11 @@ fn needless_borrow_count<'tcx>(
         .skip_norm_wip()
         .skip_binder();
     let clauses = cx.tcx.param_env(fn_id).caller_bounds();
-    let projection_predicates = clauses
+    let projection_clauses = clauses
         .iter()
         .filter_map(|clause| {
-            if let ClauseKind::Projection(projection_predicate) = clause.kind().skip_binder() {
-                Some(projection_predicate)
+            if let ClauseKind::Projection(projection_clause) = clause.kind().skip_binder() {
+                Some(projection_clause)
             } else {
                 None
             }
@@ -226,7 +226,7 @@ fn needless_borrow_count<'tcx>(
     // See:
     // - https://github.com/rust-lang/rust-clippy/pull/9674#issuecomment-1289294201
     // - https://github.com/rust-lang/rust-clippy/pull/9674#issuecomment-1292225232
-    if projection_predicates
+    if projection_clauses
         .iter()
         .any(|projection_predicate| is_mixed_projection_predicate(cx, fn_id, projection_predicate))
     {
@@ -265,7 +265,7 @@ fn needless_borrow_count<'tcx>(
             referent_ty,
             fn_sig,
             arg_index,
-            &projection_predicates,
+            &projection_clauses,
             &mut args_with_referent_ty,
         ) {
             return false;

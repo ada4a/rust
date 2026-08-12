@@ -2573,7 +2573,7 @@ pub(super) fn check_type_bounds<'tcx>(
     ocx.resolve_regions_and_report_errors(impl_ty_def_id, param_env, assumed_wf_types)
 }
 
-/// Install projection predicates that allow GATs to project to their own
+/// Install projection clauses that allow GATs to project to their own
 /// definition types. This is not allowed in general in cases of default
 /// associated types in trait definitions, or when specialization is involved,
 /// but is needed when checking these definition types actually satisfy the
@@ -2629,7 +2629,7 @@ fn param_env_with_gat_bounds<'tcx>(
     let container_id = impl_ty.container_id(tcx);
     let mut clauses = param_env.caller_bounds().to_vec();
 
-    // for RPITITs, we should install predicates that allow us to project all
+    // for RPITITs, we should install clauses that allow us to project all
     // of the RPITITs associated with the same body. This is because checking
     // the item bounds of RPITITs often involves nested RPITITs having to prove
     // bounds about themselves.
@@ -2718,7 +2718,7 @@ fn param_env_with_gat_bounds<'tcx>(
             &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
                 if def_id == trait_ty.def_id && args == rebased_args =>
             {
-                // Don't include this predicate if the projected type is
+                // Don't include this clause if the projected type is
                 // exactly the same as the projection. This can occur in
                 // (somewhat dubious) code like this:
                 //

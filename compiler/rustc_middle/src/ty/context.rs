@@ -2743,10 +2743,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 clause
                     .kind()
                     .map_bound(|kind| match kind {
-                        ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.def_id() == item_def_id =>
+                        ty::ClauseKind::Projection(projection_clause)
+                            if projection_clause.def_id() == item_def_id =>
                         {
-                            projection_predicate.term.as_type()
+                            projection_clause.term.as_type()
                         }
                         _ => None,
                     })

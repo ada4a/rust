@@ -516,14 +516,14 @@ impl<I: Interner> ExistentialProjection<I> {
         }
     }
 
-    pub fn erase_self_ty(interner: I, projection_predicate: ProjectionClause<I>) -> Self {
+    pub fn erase_self_ty(interner: I, projection_clause: ProjectionClause<I>) -> Self {
         // Assert there is a Self.
-        projection_predicate.projection_term.args.type_at(0);
+        projection_clause.projection_term.args.type_at(0);
 
         Self {
-            def_id: projection_predicate.def_id(),
-            args: interner.mk_args(&projection_predicate.projection_term.args.as_slice()[1..]),
-            term: projection_predicate.term,
+            def_id: projection_clause.def_id(),
+            args: interner.mk_args(&projection_clause.projection_term.args.as_slice()[1..]),
+            term: projection_clause.term,
             use_existential_projection_new_instead: (),
         }
     }
@@ -539,15 +539,15 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
     }
 }
 
-/// This kind of predicate has no *direct* correspondent in the
+/// This kind of clause has no *direct* correspondent in the
 /// syntax, but it roughly corresponds to the syntactic forms:
 ///
 /// 1. `T: TraitRef<..., Item = Type>`
 /// 2. `<T as TraitRef<...>>::Item == Type` (NYI)
 ///
 /// In particular, form #1 is "desugared" to the combination of a
-/// normal trait predicate (`T: TraitRef<...>`) and one of these
-/// predicates. Form #2 is a broader form in that it also permits
+/// normal trait clause (`T: TraitRef<...>`) and one of these
+/// clauses. Form #2 is a broader form in that it also permits
 /// equality between arbitrary types. Processing an instance of
 /// Form #2 eventually yields one of these `ProjectionClause`
 /// instances to normalize the LHS.
@@ -593,7 +593,7 @@ impl<I: Interner> ty::Binder<I, ProjectionClause<I>> {
     }
 
     pub fn term(&self) -> ty::Binder<I, I::Term> {
-        self.map_bound(|predicate| predicate.term)
+        self.map_bound(|clause| clause.term)
     }
 
     /// The `DefId` of the `TraitItem` for the associated type.

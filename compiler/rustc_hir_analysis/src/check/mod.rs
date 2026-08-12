@@ -410,8 +410,8 @@ fn bounds_from_generic_clauses<'tcx>(
                     entry.push(trait_predicate.def_id());
                 }
             }
-            ty::ClauseKind::Projection(projection_pred) => {
-                projections.push(bound_clause.rebind(projection_pred));
+            ty::ClauseKind::Projection(projection_clause) => {
+                projections.push(bound_clause.rebind(projection_clause));
             }
             ty::ClauseKind::RegionOutlives(OutlivesClause(a, b)) => {
                 regions.entry(a).or_default().push(b);

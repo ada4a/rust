@@ -189,11 +189,11 @@ where
             ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
             _ => return Err(NoSolution),
         };
-        if let Some(projection_pred) = assumption.as_projection_clause()
-            && projection_pred.item_def_id() == alias_def_id
+        if let Some(projection_clause) = assumption.as_projection_clause()
+            && projection_clause.item_def_id() == alias_def_id
             && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                 goal.predicate.alias.args,
-                projection_pred.skip_binder().projection_term.args,
+                projection_clause.skip_binder().projection_term.args,
             )
         {
             Ok(())
@@ -209,11 +209,11 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = ecx.cx();
-        let projection_pred = assumption.as_projection_clause().unwrap();
-        let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
-        ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
+        let projection_clause = assumption.as_projection_clause().unwrap();
+        let assumption_projection_clause = ecx.instantiate_binder_with_infer(projection_clause);
+        ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_clause.projection_term)?;
 
-        ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term)?;
+        ecx.instantiate_normalizes_to_term(goal, assumption_projection_clause.term)?;
 
         // Add GAT where clauses from the trait's definition
         // FIXME: We don't need these, since these are the type's own WF obligations.
@@ -543,7 +543,7 @@ where
         let output_is_sized_pred =
             ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
 
-        let pred = ty::ProjectionClause {
+        let clause = ty::ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 cx,
                 goal.predicate.alias.kind,
@@ -557,7 +557,7 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            pred,
+            clause,
             [(GoalSource::ImplWhereBound, goal.with(cx, output_is_sized_pred))],
         )
     }
@@ -632,13 +632,13 @@ where
         } else {
             panic!("no such associated type in `AsyncFn*`: {:?}", def_id)
         };
-        let pred = ty::ProjectionClause { projection_term, term }.upcast(cx);
+        let clause = ty::ProjectionClause { projection_term, term }.upcast(cx);
 
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            pred,
+            clause,
             [goal.with(cx, output_is_sized_pred)]
                 .into_iter()
                 .chain(nested_preds.into_iter().map(|pred| goal.with(cx, pred)))

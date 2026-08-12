@@ -437,8 +437,8 @@ pub(crate) fn clean_clause<'tcx>(
         ty::ClauseKind::TypeOutlives(clause) => {
             Some(clean_type_outlives_clause(bound_clause.rebind(clause), cx))
         }
-        ty::ClauseKind::Projection(pred) => {
-            Some(clean_projection_predicate(bound_clause.rebind(pred), cx))
+        ty::ClauseKind::Projection(clause) => {
+            Some(clean_projection_clause(bound_clause.rebind(clause), cx))
         }
         // FIXME(generic_const_exprs): should this do something?
         ty::ClauseKind::ConstEvaluatable(..)
@@ -523,13 +523,13 @@ fn clean_hir_term<'tcx>(
     }
 }
 
-fn clean_projection_predicate<'tcx>(
-    pred: ty::Binder<'tcx, ty::ProjectionClause<'tcx>>,
+fn clean_projection_clause<'tcx>(
+    clause: ty::Binder<'tcx, ty::ProjectionClause<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
     WherePredicate::ProjectionPredicate {
-        lhs: clean_projection(pred.map_bound(|p| p.projection_term), cx, None),
-        rhs: clean_middle_term(pred.map_bound(|p| p.term), cx),
+        lhs: clean_projection(clause.map_bound(|c| c.projection_term), cx, None),
+        rhs: clean_middle_term(clause.map_bound(|c| c.term), cx),
     }
 }
 
@@ -897,7 +897,7 @@ fn clean_ty_generics_inner<'tcx>(
         .clauses
         .iter()
         .flat_map(|(clause, _)| {
-            let mut proj_pred = None;
+            let mut proj_clause = None;
             let param_idx = {
                 let bound_c = clause.kind();
                 match bound_c.skip_binder() {
@@ -909,10 +909,10 @@ fn clean_ty_generics_inner<'tcx>(
                     {
                         Some(param.index)
                     }
-                    ty::ClauseKind::Projection(p)
-                        if let ty::Param(param) = p.projection_term.self_ty().kind() =>
+                    ty::ClauseKind::Projection(c)
+                        if let ty::Param(param) = c.projection_term.self_ty().kind() =>
                     {
-                        proj_pred = Some(bound_c.rebind(p));
+                        proj_clause = Some(bound_c.rebind(c));
                         Some(param.index)
                     }
                     _ => None,
@@ -926,12 +926,12 @@ fn clean_ty_generics_inner<'tcx>(
 
                 bounds.extend(clause.get_bounds().into_iter().flatten().cloned());
 
-                if let Some(pred) = proj_pred {
-                    let lhs = clean_projection(pred.map_bound(|p| p.projection_term), cx, None);
+                if let Some(clause) = proj_clause {
+                    let lhs = clean_projection(clause.map_bound(|c| c.projection_term), cx, None);
                     impl_trait_proj.entry(param_idx).or_default().push((
                         lhs.trait_.unwrap().def_id(),
                         lhs.assoc,
-                        pred.map_bound(|p| p.term),
+                        clause.map_bound(|c| c.term),
                     ));
                 }
 
@@ -2431,16 +2431,16 @@ fn clean_middle_opaque_bounds<'tcx>(
                 .iter()
                 .filter_map(|(bound, _)| {
                     let bound = bound.kind();
-                    if let ty::ClauseKind::Projection(proj_pred) = bound.skip_binder()
-                        && proj_pred.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder()
+                    if let ty::ClauseKind::Projection(proj_clause) = bound.skip_binder()
+                        && proj_clause.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder()
                     {
                         return Some(AssocItemConstraint {
                             assoc: projection_to_path_segment(
-                                bound.rebind(proj_pred.projection_term),
+                                bound.rebind(proj_clause.projection_term),
                                 cx,
                             ),
                             kind: AssocItemConstraintKind::Equality {
-                                term: clean_middle_term(bound.rebind(proj_pred.term), cx),
+                                term: clean_middle_term(bound.rebind(proj_clause.term), cx),
                             },
                         });
                     }

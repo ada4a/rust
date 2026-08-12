@@ -128,7 +128,7 @@ pub(crate) fn identify_constrained_generic_params<'tcx>(
 /// the implicit `Sized` bounds, these are
 ///   * `T: Debug`
 ///   * `U: Iterator`
-///   * `<U as Iterator>::Item = T` -- a desugared ProjectionPredicate
+///   * `<U as Iterator>::Item = T` -- a desugared ProjectionClause
 ///
 /// When we, for example, try to go over the trait-reference
 /// `IntoIter<u32> as Trait`, we instantiate the impl parameters with fresh

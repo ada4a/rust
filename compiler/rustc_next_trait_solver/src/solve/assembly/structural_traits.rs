@@ -1013,8 +1013,8 @@ where
         };
 
         // This is quite similar to the `projection_may_match` we use in unsizing,
-        // but here we want to unify a projection predicate against an alias term
-        // so we can replace it with the projection predicate's term.
+        // but here we want to unify a projection clause against an alias term
+        // so we can replace it with the projection clause's term.
         let mut matching_projection = None;
         for source_projection in replacements {
             if self.projection_may_match(*source_projection, alias_term)? {

@@ -1838,10 +1838,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut format_pred = |pred: ty::Predicate<'tcx>| {
             let bound_predicate = pred.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
-                    let pred = bound_predicate.rebind(pred);
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(clause)) => {
+                    let clause = bound_predicate.rebind(clause);
                     // `<Foo as Iterator>::Item = String`.
-                    let projection_term = pred.skip_binder().projection_term;
+                    let projection_term = clause.skip_binder().projection_term;
                     if !projection_term.kind.is_trait_projection() {
                         return None;
                     }
@@ -1849,7 +1849,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let quiet_projection_term = projection_term
                         .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
-                    let term = pred.skip_binder().term;
+                    let term = clause.skip_binder().term;
 
                     let obligation = format!("{projection_term} = {term}");
                     let quiet =

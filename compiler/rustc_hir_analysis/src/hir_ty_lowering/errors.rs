@@ -982,10 +982,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let format_pred = |pred: ty::Predicate<'tcx>| {
             let bound_predicate = pred.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(clause)) => {
                     // `<Foo as Iterator>::Item = String`.
-                    let projection_term = pred.projection_term;
-                    let term = pred.term;
+                    let projection_term = clause.projection_term;
+                    let term = clause.term;
                     let self_ty = projection_term.args.get(0).and_then(|arg| arg.as_type())?;
 
                     let obligation = format!("{projection_term} = {term}");

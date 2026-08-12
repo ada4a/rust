@@ -1037,17 +1037,17 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
-            && let ty::ClauseKind::Projection(projection_pred) = clause
+            && let ty::ClauseKind::Projection(projection_clause) = clause
         {
             p.kind()
                 .rebind(ty::ProjectionClause {
-                    projection_term: projection_pred.projection_term.fold_with(self),
-                    // Don't fold the term on the RHS of the projection predicate.
+                    projection_term: projection_clause.projection_term.fold_with(self),
+                    // Don't fold the term on the RHS of the projection clause.
                     // This is because for default trait methods with RPITITs, we
                     // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
                     // predicate, which would trivially cause a cycle when we do
                     // anything that requires `TypingEnv::with_post_analysis_normalized`.
-                    term: projection_pred.term,
+                    term: projection_clause.term,
                 })
                 .upcast(self.tcx)
         } else {

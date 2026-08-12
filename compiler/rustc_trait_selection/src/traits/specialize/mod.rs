@@ -187,7 +187,7 @@ fn fulfill_implication<'tcx>(
 
     // Now check that the source trait ref satisfies all the where clauses of the target impl.
     // This is not just for correctness; we also need this to constrain any params that may
-    // only be referenced via projection predicates.
+    // only be referenced via projection clauses.
     let clauses = infcx.tcx.clauses_of(target_impl).instantiate(infcx.tcx, target_args);
     let obligations = predicates_for_generics(
         |_, _| cause.clone(),

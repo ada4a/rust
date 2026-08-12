@@ -778,7 +778,7 @@ fn project<'cx, 'tcx>(
 }
 
 /// The first thing we have to do is scan through the parameter
-/// environment to see whether there are any projection predicates
+/// environment to see whether there are any projection clauses
 /// there that can answer this question.
 fn assemble_candidates_from_param_env<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
@@ -1416,12 +1416,12 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
         );
     };
 
-    let predicate = ty::ProjectionClause {
+    let clause = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: ty.into(),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(clause), false)
         .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
 }
@@ -1463,12 +1463,12 @@ fn confirm_future_candidate<'cx, 'tcx>(
         sym::Output
     );
 
-    let predicate = ty::ProjectionClause {
+    let clause = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: return_ty.into(),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(clause), false)
         .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
 }
@@ -1508,12 +1508,12 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
         sym::Item
     );
 
-    let predicate = ty::ProjectionClause {
+    let clause = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: yield_ty.into(),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(clause), false)
         .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
 }
@@ -1561,12 +1561,12 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     };
     let item_ty = args.type_at(0);
 
-    let predicate = ty::ProjectionClause {
+    let clause = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: item_ty.into(),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(clause), false)
         .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
 }
@@ -1640,7 +1640,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };
 
-    let predicate = ty::ProjectionClause {
+    let clause = ty::ProjectionClause {
         projection_term: ty::AliasTerm::new_from_args(
             tcx,
             ty::AliasTermKind::ProjectionTy { def_id: item_def_id },
@@ -1649,7 +1649,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         term,
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(clause), false)
         .with_addl_obligations(obligations)
         .with_addl_obligations(data)
 }
@@ -1737,7 +1737,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
     let fn_once_output_def_id =
         tcx.require_lang_item(LangItem::FnOnceOutput, obligation.cause.span);
 
-    let predicate = super::util::closure_trait_ref_and_return_type(
+    let clause = super::util::closure_trait_ref_and_return_type(
         tcx,
         fn_once_def_id,
         obligation.predicate.self_ty(),
@@ -1753,7 +1753,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         term: ret_type.into(),
     });
 
-    confirm_param_env_candidate(selcx, obligation, predicate, true)
+    confirm_param_env_candidate(selcx, obligation, clause, true)
 }
 
 fn confirm_async_closure_candidate<'cx, 'tcx>(
@@ -1953,7 +1953,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
         bug!();
     };
 
-    let predicate = ty::ProjectionClause {
+    let clause = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(selcx.tcx(), obligation.predicate.args),
         term: ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
             selcx.tcx(),
@@ -1966,7 +1966,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
         .into(),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(clause), false)
         .with_addl_obligations(nested)
 }
 

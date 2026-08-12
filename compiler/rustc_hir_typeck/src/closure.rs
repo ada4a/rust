@@ -549,7 +549,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     ///
     /// The we want to be able to extract the signature to guide inference in the async
-    /// closure. We will have two projection predicates registered in this case. First,
+    /// closure. We will have two projection clauses registered in this case. First,
     /// we identify the `FnOnce<Args, Output = ?Fut>` bound, and if the output type is
     /// an inference variable `?Fut`, we check if that is bounded by a `Future<Output = Ty>`
     /// projection.

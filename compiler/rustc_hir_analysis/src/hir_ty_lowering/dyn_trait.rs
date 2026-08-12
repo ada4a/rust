@@ -238,12 +238,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .map(|item| (item.def_id, trait_ref)),
                         );
                     }
-                    ty::ClauseKind::Projection(pred) => {
-                        let pred = bound_clause.rebind(pred);
+                    ty::ClauseKind::Projection(clause) => {
+                        let clause = bound_clause.rebind(clause);
                         // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =
-                            pred.skip_binder().term.walk().any(|arg| arg == dummy_self.into());
+                            clause.skip_binder().term.walk().any(|arg| arg == dummy_self.into());
 
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.
@@ -264,18 +264,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // the discussion in #56288 for alternatives.
                         if !references_self {
                             let key = (
-                                pred.item_def_id(),
+                                clause.item_def_id(),
                                 tcx.anonymize_bound_vars(
-                                    pred.map_bound(|proj| proj.projection_term.trait_ref(tcx)),
+                                    clause.map_bound(|proj| proj.projection_term.trait_ref(tcx)),
                                 ),
                             );
                             if !projection_bounds.contains_key(&key) {
-                                projection_bounds.insert(key, (pred, supertrait_span));
+                                projection_bounds.insert(key, (clause, supertrait_span));
                             }
                         }
 
                         self.check_elaborated_projection_mentions_input_lifetimes(
-                            pred,
+                            clause,
                             *spans.first().unwrap(),
                             supertrait_span,
                         );
@@ -473,10 +473,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Check that elaborating the principal of a trait ref doesn't lead to projections
     /// that are unconstrained. This can happen because an otherwise unconstrained
     /// *type variable* can be substituted with a type that has late-bound regions. See
-    /// `elaborated-predicates-unconstrained-late-bound.rs` for a test.
+    /// `elaborated-clauses-unconstrained-late-bound.rs` for a test.
     fn check_elaborated_projection_mentions_input_lifetimes(
         &self,
-        pred: ty::PolyProjectionClause<'tcx>,
+        clause: ty::PolyProjectionClause<'tcx>,
         span: Span,
         supertrait_span: Span,
     ) {
@@ -490,9 +490,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
         //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
         let late_bound_in_projection_term =
-            tcx.collect_constrained_late_bound_regions(pred.map_bound(|pred| pred.projection_term));
+            tcx.collect_constrained_late_bound_regions(clause.map_bound(|c| c.projection_term));
         let late_bound_in_term =
-            tcx.collect_referenced_late_bound_regions(pred.map_bound(|pred| pred.term));
+            tcx.collect_referenced_late_bound_regions(clause.map_bound(|c| c.term));
         debug!(?late_bound_in_projection_term);
         debug!(?late_bound_in_term);
 
@@ -504,7 +504,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             late_bound_in_projection_term,
             late_bound_in_term,
             |br_name| {
-                let item_name = tcx.item_name(pred.item_def_id());
+                let item_name = tcx.item_name(clause.item_def_id());
                 struct_span_code_err!(
                     self.dcx(),
                     span,

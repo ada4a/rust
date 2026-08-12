@@ -778,8 +778,8 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
                     b.stable(tables, cx),
                 ))
             }
-            ClauseKind::Projection(projection_predicate) => {
-                crate::ty::ClauseKind::Projection(projection_predicate.stable(tables, cx))
+            ClauseKind::Projection(projection_clause) => {
+                crate::ty::ClauseKind::Projection(projection_clause.stable(tables, cx))
             }
             ClauseKind::ConstArgHasType(const_, ty) => crate::ty::ClauseKind::ConstArgHasType(
                 const_.stable(tables, cx),

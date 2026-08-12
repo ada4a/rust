@@ -768,11 +768,11 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
-                    ty::ClauseKind::Projection(projection_predicate) => {
+                    ty::ClauseKind::Projection(projection_clause) => {
                         assert_eq!(
-                            projection_predicate.self_ty(),
+                            projection_clause.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing \
+                            "expected `Self` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }

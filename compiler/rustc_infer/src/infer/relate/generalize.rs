@@ -176,7 +176,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         term: generalized_term,
                     }]);
                 }
-                // The old solver only accepts projection predicates for associated types.
+                // The old solver only accepts projection clauses for associated types.
                 ty::AliasTermKind::InherentTy { .. }
                 | ty::AliasTermKind::FreeTy { .. }
                 | ty::AliasTermKind::OpaqueTy { .. } => {

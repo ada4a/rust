@@ -943,7 +943,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Given the trait ref `Iterator<Item = u32>` and the self type `Ty`, this will add the
     ///
     /// 1. *trait predicate* `<Ty as Iterator>` (known as `Ty: Iterator` in the surface syntax) and the
-    /// 2. *projection predicate* `<Ty as Iterator>::Item = u32`
+    /// 2. *projection clause* `<Ty as Iterator>::Item = u32`
     ///
     /// to `bounds`.
     ///

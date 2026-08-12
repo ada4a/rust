@@ -59,16 +59,16 @@ fn get_trait_predicates_for_trait_ids<'tcx>(
     preds
 }
 
-fn get_projection_pred<'tcx>(
+fn get_projection_clause<'tcx>(
     cx: &LateContext<'tcx>,
     generics: GenericClauses<'tcx>,
     trait_pred: TraitClause<'tcx>,
 ) -> Option<ProjectionClause<'tcx>> {
     generics.clauses.iter().find_map(|(clause, _)| {
-        if let ClauseKind::Projection(pred) = clause.kind().skip_binder() {
-            let projection_pred = cx.tcx.instantiate_bound_regions_with_erased(clause.kind().rebind(pred));
-            if projection_pred.projection_term.args == trait_pred.trait_ref.args {
-                return Some(projection_pred);
+        if let ClauseKind::Projection(c) = clause.kind().skip_binder() {
+            let projection_clause = cx.tcx.instantiate_bound_regions_with_erased(clause.kind().rebind(c));
+            if projection_clause.projection_term.args == trait_pred.trait_ref.args {
+                return Some(projection_clause);
             }
         }
         None
@@ -106,7 +106,7 @@ fn get_args_to_check<'tcx>(
             .for_each(|(i, inp)| {
                 for trait_pred in &fn_mut_preds {
                     if trait_pred.self_ty() == inp
-                        && let Some(return_ty_pred) = get_projection_pred(cx, generics, *trait_pred)
+                        && let Some(return_ty_pred) = get_projection_clause(cx, generics, *trait_pred)
                     {
                         if ord_preds
                             .iter()

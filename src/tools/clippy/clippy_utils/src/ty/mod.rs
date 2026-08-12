@@ -127,10 +127,10 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         .map(Unnormalized::skip_norm_wip)
                     {
                         match clause.kind().skip_binder() {
-                            // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
+                            // For `impl Trait<U>`, it will register a clause of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
-                            ty::ClauseKind::Trait(trait_predicate)
-                                if trait_predicate
+                            ty::ClauseKind::Trait(trait_clause)
+                                if trait_clause
                                     .trait_ref
                                     .args
                                     .types()
@@ -139,10 +139,10 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                             {
                                 return true;
                             },
-                            // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
+                            // For `impl Trait<Assoc=U>`, it will register a clause of `<T as Trait>::Assoc = U`,
                             // so we check the term for `U`.
-                            ty::ClauseKind::Projection(projection_predicate) => {
-                                if let ty::TermKind::Ty(ty) = projection_predicate.term.kind()
+                            ty::ClauseKind::Projection(projection_clause) => {
+                                if let ty::TermKind::Ty(ty) = projection_clause.term.kind()
                                     && contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen)
                                 {
                                     return true;
@@ -859,15 +859,15 @@ fn sig_from_bounds<'tcx>(
                 }
                 inputs = Some(i);
             },
-            ty::ClauseKind::Projection(p)
-                if Some(p.projection_term.expect_projection_def_id()) == lang_items.fn_once_output()
-                    && p.projection_term.self_ty() == ty =>
+            ty::ClauseKind::Projection(c)
+                if Some(c.projection_term.expect_projection_def_id()) == lang_items.fn_once_output()
+                    && c.projection_term.self_ty() == ty =>
             {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = Some(clause.kind().rebind(p.term.expect_type()));
+                output = Some(clause.kind().rebind(c.term.expect_type()));
             },
             _ => (),
         }
@@ -901,14 +901,14 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionAliasTy<'tcx>)
                 }
                 inputs = Some(i);
             },
-            ty::ClauseKind::Projection(p)
-                if Some(p.projection_term.expect_projection_def_id()) == lang_items.fn_once_output() =>
+            ty::ClauseKind::Projection(c)
+                if Some(c.projection_term.expect_projection_def_id()) == lang_items.fn_once_output() =>
             {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = clause.kind().rebind(p.term.as_type()).transpose();
+                output = clause.kind().rebind(c.term.as_type()).transpose();
             },
             _ => (),
         }

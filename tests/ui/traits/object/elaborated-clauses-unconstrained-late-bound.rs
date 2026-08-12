@@ -1,4 +1,4 @@
-// Make sure that when elaborating the principal of a dyn trait for projection predicates
+// Make sure that when elaborating the principal of a dyn trait for projection clauses
 //  we don't end up in a situation where we have an unconstrained late-bound lifetime in
 // the output of a projection.
 

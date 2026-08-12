@@ -16,7 +16,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         let tcx = self.tcx.tcx;
 
         // Find the principal trait ref (for super trait collection), collect auto traits,
-        // and collect all projection predicates (used when computing TypeId for each supertrait).
+        // and collect all projection clauses (used when computing TypeId for each supertrait).
         let mut principal: Option<ty::Binder<'tcx, ty::ExistentialTraitRef<'tcx>>> = None;
         let mut auto_traits_def_ids: Vec<ty::Binder<'tcx, DefId>> = Vec::new();
         let mut projections: Vec<ty::Binder<'tcx, ty::ExistentialProjection<'tcx>>> = Vec::new();
@@ -29,7 +29,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             }
         }
 
-        // This is to make principal dyn type include Trait and projection predicates, excluding auto traits.
+        // This is to make principal dyn type include Trait and projection clauses, excluding auto traits.
         let principal_ty: Option<Ty<'tcx>> = principal.map(|_tr| {
             let preds = tcx
                 .mk_poly_existential_predicates_from_iter(data.iter().filter(|b| {
