@@ -52,9 +52,9 @@ use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::visit::TypeSuperVisitable;
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, ConstKind, DebruijnIndex,
-    FallibleTypeFolder, InferCtxtLike, InferTy, Interner, OutlivesPredicate, RegionKind, TyKind,
-    TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex, Variance,
-    VisitorResult,
+    FallibleTypeFolder, GenericTypeVisitable, InferCtxtLike, InferTy, Interner, OutlivesPredicate,
+    RegionKind, TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode,
+    UniverseIndex, Variance, VisitorResult,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
@@ -92,6 +92,7 @@ impl<I: Interner> Assumptions<I> {
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
 pub enum RegionConstraint<I: Interner> {
     Ambiguity,
     RegionOutlives(I::Region, I::Region),
@@ -116,8 +117,8 @@ pub enum RegionConstraint<I: Interner> {
     /// and there may wind up being assumptions we can use to prove this when we're in a smaller universe.
     PlaceholderTyOutlives(I::Ty, I::Region),
 
-    And(Box<[RegionConstraint<I>]>),
-    Or(Box<[RegionConstraint<I>]>),
+    And(#[generic_type_visitable(bounds())] Box<[RegionConstraint<I>]>),
+    Or(#[generic_type_visitable(bounds())] Box<[RegionConstraint<I>]>),
 }
 
 // This is not a derived impl because a perfect derive leads to inductive
